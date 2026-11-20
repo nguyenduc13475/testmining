@@ -1,0 +1,12 @@
+data/
+outputs/
+__pycache__/
+.pytest_cache/
+.venv/
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+report/generated/*
+!report/generated/.gitkeep

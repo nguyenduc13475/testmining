@@ -1,0 +1,116 @@
+% Compile: xelatex main.tex (twice). Upload report/ folder to Overleaf.
+\documentclass[12pt,a4paper]{report}
+\usepackage{fontspec}
+\usepackage[vietnamese,english]{babel}
+\setmainfont{Liberation Serif}
+\usepackage{geometry,graphicx,booktabs,longtable,tabularx,array,amsmath,amssymb,hyperref,enumitem,fancyhdr,float}
+\geometry{left=3cm,right=2cm,top=2.5cm,bottom=2.5cm}
+\hypersetup{colorlinks=true,linkcolor=black,urlcolor=blue,citecolor=black}
+\setlength{\parindent}{1.25cm}
+\setlength{\parskip}{4pt}
+\pagestyle{fancy}\fancyhf{}\fancyhead[L]{CO3029 -- Khai phá dữ liệu}\fancyhead[R]{HK261}\fancyfoot[C]{\thepage}
+\newcommand{\todo}[1]{\textbf{[CẦN BỔ SUNG: #1]}}
+\begin{document}
+\begin{titlepage}
+\centering
+\includegraphics[width=2.2cm]{../assets/hcmut.png}\\[0.6cm]
+{\bfseries ĐẠI HỌC QUỐC GIA THÀNH PHỐ HỒ CHÍ MINH\\ TRƯỜNG ĐẠI HỌC BÁCH KHOA\\ KHOA KHOA HỌC VÀ KỸ THUẬT MÁY TÍNH\par}
+\vspace{1.8cm}{\Large\bfseries BÁO CÁO BÀI TẬP LỚN\par}\vspace{0.4cm}
+{\large MÔN HỌC: KHAI PHÁ DỮ LIỆU (CO3029)\par}\vspace{1.1cm}
+{\LARGE\bfseries DỰ BÁO GIÁ BẤT ĐỘNG SẢN ĐÔ THỊ TẠI THÀNH PHỐ HỒ CHÍ MINH\par}
+\vspace{0.5cm}{\large Urban Real Estate Valuation \& Hedonic Pricing\par}\vfill
+\begin{tabular}{ll}Học kỳ: & HK261\\ Giảng viên: & \todo{Họ tên giảng viên}\\ Nhóm thực hiện: & \todo{Tên nhóm}\\ Sinh viên -- MSSV: & \todo{Thành viên và MSSV}\\\end{tabular}
+\vfill Thành phố Hồ Chí Minh, năm 2026
+\end{titlepage}
+\pagenumbering{roman}
+\chapter*{Tóm tắt}\addcontentsline{toc}{chapter}{Tóm tắt}
+Đề tài nghiên cứu bài toán hồi quy giá \emph{niêm yết} bất động sản TP. Hồ Chí Minh từ thông tin diện tích, cấu trúc và vị trí. Dữ liệu lấy từ TiniX Vietnam Real Estate Listings 2025--2026, công bố khoảng 1.357.526 tin thuộc TP.HCM. Quy trình đề xuất gồm khám phá dữ liệu, xử lý thiếu và ngoại biên, mã hóa thuộc tính phân loại, so sánh Ridge, ElasticNet, Random Forest và Histogram Gradient Boosting, đánh giá qua kiểm thử độc lập và giải thích đặc trưng. Ứng dụng Streamlit cho phép người sử dụng nhập thông số và xem giá dự báo cùng khoảng dự báo hiệu chỉnh. \todo{Sau khi chạy mã, thêm số dòng thực tế, mô hình tốt nhất, các kết quả MAE/RMSE/R2/MAPE và tỷ lệ bao phủ; không điền số giả.}
+\chapter*{Tuyên bố liêm chính học thuật và sử dụng AI}\addcontentsline{toc}{chapter}{Tuyên bố liêm chính học thuật và sử dụng AI}
+Nhóm chịu trách nhiệm kiểm chứng nguồn dữ liệu, đọc hiểu và vận hành thuật toán, phân tích kết quả thực nghiệm, trích dẫn tài liệu và nội dung nộp cuối cùng. Công cụ ChatGPT (OpenAI) đã được dùng để hỗ trợ tham khảo ý tưởng, phác thảo cấu trúc báo cáo và khởi tạo mã thử nghiệm. Các kết quả định lượng chỉ được trình bày khi tái lập bằng chương trình. \todo{Chỉnh sửa trung thực theo mức độ sử dụng AI thực tế và quy định của giảng viên; không nộp nguyên văn báo cáo khởi tạo này.}
+\tableofcontents\clearpage\pagenumbering{arabic}
+\chapter{Giới thiệu và hiểu bài toán}
+\section{Bối cảnh}
+Dự báo giá bất động sản từ dữ liệu tin đăng là một ứng dụng hồi quy có ý nghĩa đối với tra cứu thị trường, nghiên cứu đô thị và hỗ trợ tham khảo mức giá. Giá chịu ảnh hưởng bởi diện tích, vị trí, loại bất động sản, số tầng và những thông tin có thể bị khuyết. Số liệu của bộ dữ liệu là \emph{giá chào bán}, không được suy diễn thành giá giao dịch thực tế. Do thiếu xác thực giao dịch, mục tiêu là mô hình hóa phân phối giá niêm yết.
+\section{Phát biểu bài toán}
+Cho tập thuộc tính đầu vào $\mathbf{x}_i$ gồm biến số và biến phân loại, mô hình hồi quy $f$ ước lượng $\hat y_i=f(\mathbf{x}_i)$ cho giá VND dương. Khi huấn luyện, đặt $z_i=\log(y_i)$ và tối ưu sai số trên log-price; khi đánh giá, chuyển về $\hat y_i=\exp(\hat z_i)$. Dự báo không sử dụng bất kỳ biến nào được tính trực tiếp từ giá thực, nhằm tránh rò rỉ nhãn.
+\section{Mục tiêu và giới hạn}
+Các mục tiêu: (i) lập EDA tái lập; (ii) xây dựng quy trình tiền xử lý nằm trong các fold; (iii) thử ít nhất ba mô hình và tinh chỉnh tham số; (iv) đánh giá nhiều thước đo, diễn giải vai trò thuộc tính; (v) minh họa giao diện tương tác. Giới hạn: chỉ tin đăng TP.HCM, không phải giao dịch; tính tổng quát hóa ra ngoài phân phối dữ liệu không được đảm bảo.
+\chapter{Dữ liệu và khám phá dữ liệu}
+\section{Nguồn và bản quyền}
+Bộ dữ liệu \emph{Tinix Vietnam Real Estate Listings 2025--2026}, do TiniX AI công bố, có 3.500.744 bản ghi toàn quốc và 1.357.526 bản ghi TP.HCM theo mô tả nguồn \cite{dataset}. Thời gian thu thập từ tháng 6/2025 đến tháng 3/2026; định dạng Parquet; giấy phép CC BY-NC 4.0. Pipeline lấy dữ liệu từ bản phân phối trên Hugging Face, lọc cột \texttt{province\_name}. Không sao chép dữ liệu thô vào kho mã hoặc LMS.
+\section{Lược đồ}
+\begin{longtable}{p{0.36\textwidth}p{0.55\textwidth}}
+\toprule Thuộc tính & Vai trò\\\midrule\endhead
+\texttt{price} & Giá niêm yết (VND), nhãn hồi quy\\
+\texttt{area} & Diện tích (m$^2$)\\
+\texttt{property\_type\_name} & Loại hình: Nhà, Đất, Căn hộ, ...\\
+\texttt{district\_name, ward\_name, street\_name} & Địa chỉ theo cấp quận/huyện, phường, đường\\
+\texttt{project\_name} & Tên dự án (có thể thiếu)\\
+\texttt{floor\_count, bedroom\_count, bathroom\_count} & Số tầng, số phòng ngủ và phòng tắm\\
+\texttt{frontage\_width, house\_depth, road\_width} & Thông số hình học/đường\\
+\texttt{house\_direction, balcony\_direction} & Hướng nhà và ban công\\
+\texttt{published\_at} & Thời điểm đăng (trích năm, tháng)\\\bottomrule
+\end{longtable}
+\section{Khảo sát dữ liệu}
+Cần báo cáo số giá trị thiếu từng cột, tần suất loại hình, phân bố giá, diện tích, giá/m$^2$, số bản ghi trùng toàn bộ và các khu vực phổ biến. Chạy \texttt{scripts/train.py}; thống kê thô nằm trong \texttt{outputs/summary.json}, biểu đồ phân phối tại \texttt{outputs/price\_distribution.png}.
+\IfFileExists{generated/price_distribution.png}{\begin{figure}[H]\centering\includegraphics[width=.85\linewidth]{generated/price_distribution.png}\caption{Phân phối giá sau làm sạch; chỉ cắt ngưỡng hiển thị tại 100 tỷ VND.}\end{figure}}{\todo{Chạy huấn luyện và xuất biểu đồ phân phối thực tế.}}
+\todo{Trình bày phân bố dữ liệu, 2--3 nhận xét từ số liệu thực và ảnh hưởng đến quyết định tiền xử lý.}
+\chapter{Tiền xử lý và thiết kế đặc trưng}
+\section{Quy tắc làm sạch}
+Loại dòng trùng toàn bộ; loại tin thiếu giá hoặc diện tích hợp lệ; ràng buộc giá từ 100 triệu đến 500 tỷ VND, diện tích 5--5000 m$^2$, giá/m$^2$ từ 1 triệu đến 3 tỷ VND. Đây là các quy tắc kỹ thuật khởi tạo, cần được kiểm chứng bằng phân tích thống kê và thử nghiệm nhạy cảm. Không dùng giá/m$^2$ làm đặc trưng huấn luyện vì chứa giá nhãn. Các trường số vật lý ngoài khoảng hợp lý được chuyển sang giá trị thiếu để nội suy từ tập huấn luyện. Thuộc tính phân loại thiếu được gán ``Không rõ''.
+\section{Biến đổi và bảo vệ chống rò rỉ}
+Các biến số được điền trung vị rồi StandardScaler. Biến phân loại được OneHotEncoder, gom danh mục hiếm và giới hạn mỗi cột tối đa 80 nhãn. Toàn bộ bước ước lượng median, standardization và encoding đặt \emph{bên trong} Pipeline để mỗi vòng cross-validation chỉ fit trên fold huấn luyện. Tạo thêm \texttt{published\_month}, \texttt{published\_year} và tỷ lệ chiều sâu / mặt tiền, nhưng không suy ra giá.
+\section{Chia dữ liệu}
+Thiết lập seed=42; lấy mẫu ngẫu nhiên có kiểm soát nếu tài nguyên hạn chế. Chia tập train 70\%, calibration 10\% và test 20\% trên mẫu hợp lệ. Sử dụng K-fold (3 fold mặc định) trên train; test chỉ dành báo cáo cuối. Việc chia ngẫu nhiên dù đã loại dòng trùng hoàn toàn vẫn có nguy cơ cùng một bất động sản xuất hiện qua nhiều tin khác nhau: cần xem xét kiểm thử theo nhóm vị trí hoặc thời gian để kiểm chứng độ tin cậy ngoại suy.
+\chapter{Phương pháp và tối ưu mô hình}
+\section{Mô hình tuyến tính}
+Ridge tối ưu $\|\mathbf{z}-X\beta\|_2^2+\alpha\|\beta\|_2^2$; ElasticNet kết hợp chuẩn $L_1$ và $L_2$, hỗ trợ co hệ số và lựa chọn đặc trưng. Đây là hai baseline dễ diễn giải và phù hợp dữ liệu mã hóa OneHot.
+\section{Mô hình phi tuyến}
+Random Forest trung bình hóa nhiều cây quyết định nhằm giảm biến thiên của một cây đơn lẻ. Histogram Gradient Boosting xây dựng tổ hợp cộng dồn của các cây theo hướng sửa lỗi của mô hình hiện hành, rời rạc hóa biến số thành các bins giúp tăng tốc huấn luyện \cite{hastie,sklearn}.
+\section{Tinh chỉnh siêu tham số}
+Dùng RandomizedSearchCV trên danh sách hữu hạn, với $k=3$ và hàm chấm điểm MAE trên log-price. Tập tham số của Ridge: $\alpha\in\{1,10,100\}$; ElasticNet: $\alpha\in\{0.001,0.01,0.1\}$, $l_1\_ratio\in\{0.2,0.7\}$; Random Forest: độ sâu 12/20 và min leaf 2/5; boosting: learning rate 0.05/0.1 và max leaf 15/31. Mô hình cuối được chọn chỉ dựa trên CV, không sử dụng test để ra quyết định.
+\section{Các thước đo}
+\begin{align}
+\mathrm{MAE}&=\frac1n\sum_i|y_i-\hat y_i|, & \mathrm{RMSE}&=\sqrt{\frac1n\sum_i(y_i-\hat y_i)^2},\\
+R^2&=1-\frac{\sum_i(y_i-\hat y_i)^2}{\sum_i(y_i-\bar y)^2}, & \mathrm{MAPE}&=\frac{100}{n}\sum_i\left|\frac{y_i-\hat y_i}{y_i}\right|.
+\end{align}
+MAE và RMSE được báo cáo bằng VND/tỷ VND ở thang gốc; MAPE chỉ xét nhãn dương. MAPE khó diễn giải khi giá nhỏ nên không dùng riêng lẻ.
+\chapter{Thực nghiệm, đánh giá và giải thích}
+\section{Cấu hình thực nghiệm}
+\todo{Thay bằng cấu hình thực tế: CPU, RAM, OS, Python, thư viện, số mẫu đã dùng và thời gian chạy; trích số liệu từ summary.json.}
+\section{So sánh các thuật toán}
+\IfFileExists{generated/metrics_table.tex}{\input{generated/metrics_table.tex}}{\todo{Chạy scripts/train.py và scripts/export\_report.py để tạo bảng kết quả thực nghiệm.}}
+\todo{Bình luận sai số, tính ổn định giữa thuật toán, trade-off mô hình và phân tích loại hình/district nếu thực hiện bổ sung.}
+\section{Thí nghiệm ảnh hưởng của kích thước tập huấn luyện}
+Thí nghiệm này lấy một tập kiểm thử cố định từ tập dữ liệu đủ điều kiện, sau đó tăng số lượng mẫu huấn luyện trong phần dữ liệu còn lại. Các tập huấn luyện được lấy lồng nhau theo cùng seed; tiền xử lý được học chỉ từ tập huấn luyện, tránh rò rỉ thống kê từ tập kiểm thử. Mục tiêu là khảo sát sự thay đổi MAE và $R^2$ theo số lượng mẫu, không phải khẳng định một mô hình tốt hơn với mọi kích thước dữ liệu.
+\IfFileExists{generated/learning_curve_table.tex}{\input{generated/learning_curve_table.tex}}{\todo{Chạy scripts/learning\_curve.py rồi scripts/export\_report.py để chèn kết quả thật.}}
+\IfFileExists{generated/learning_curve_mae.png}{\begin{figure}[H]\centering\includegraphics[width=.85\linewidth]{generated/learning_curve_mae.png}\caption{Ảnh hưởng của số lượng mẫu huấn luyện đến MAE trên cùng tập test cố định.}\end{figure}}{}
+\IfFileExists{generated/learning_curve_r2.png}{\begin{figure}[H]\centering\includegraphics[width=.85\linewidth]{generated/learning_curve_r2.png}\caption{Ảnh hưởng của số lượng mẫu huấn luyện đến $R^2$ trên cùng tập test cố định.}\end{figure}}{}
+\todo{Tự phân tích đồ thị: sai số có giảm khi tăng mẫu không, tốc độ cải thiện có chậm dần không, và chi phí huấn luyện có xứng đáng không. Không so trực tiếp điểm với bảng mô hình cũ vì khác tập kiểm thử.}
+\section{Phân tích sai số}
+\IfFileExists{generated/actual_vs_pred.png}{\begin{figure}[H]\centering\includegraphics[width=.85\linewidth]{generated/actual_vs_pred.png}\caption{So sánh log10 giá thực và giá dự báo trên tập test.}\end{figure}}{\todo{Chèn đồ thị scatter sinh từ tập test.}}
+\section{Giải thích mô hình}
+Permutation importance hoán đổi lần lượt từng cột trên mẫu kiểm thử và đo suy giảm chất lượng dự báo (MAE log-price), giúp phản ánh vai trò dự báo của các thuộc tính. Các thuộc tính có tương quan mạnh có thể che khuất tầm quan trọng của nhau; kết quả không xác nhận quan hệ nhân quả. \todo{Phân tích 5--10 đặc trưng từ outputs/permutation\_importance.csv.}
+\section{Khoảng dự báo}
+Dùng tập calibration độc lập, tính $r_i=|\log y_i-\widehat{\log y_i}|$. Ngưỡng $q$ là quantile tuân thủ công thức split conformal cho mức 90\%. Khoảng dự báo trên thang giá gốc là $[\exp(\hat z-q),\exp(\hat z+q)]$. Tỷ lệ bao phủ trên tập kiểm thử xuất từ summary.json. Khoảng này là \emph{prediction interval} với điều kiện trao đổi được (exchangeability); không phải khoảng tin cậy 95\% cho giá trung bình. \todo{Bổ sung q và tỷ lệ bao phủ đo thực tế.}
+\chapter{Ứng dụng demo}
+Ứng dụng dùng Streamlit, có form nhập loại hình, vị trí hành chính, diện tích, phòng, số tầng, đặc điểm mặt tiền/đường, hướng và thời gian. Sau khi nhấn ``Ước lượng giá'', giao diện hiển thị giá dự báo, cận dưới/trên của khoảng 90\%, tên thuật toán và bảng thực nghiệm. Mô hình và tiền xử lý được đóng gói duy nhất trong \texttt{outputs/model.joblib}.\par
+\todo{Chạy app, tự chụp màn hình demo và chèn ảnh minh họa; trình bày ca kiểm thử đúng/sai/thiếu thông tin.}
+\chapter{Kết luận và hướng phát triển}
+Quy trình được thiết kế để đi từ nguồn dữ liệu mở đến mô hình hồi quy tái lập và demo sử dụng được. Các rủi ro nổi bật là thiên lệch giá chào bán, tin đăng lặp về cùng tài sản, thiếu đặc trưng chất lượng nhà, và phân phối địa lý thiếu đồng đều. Những hướng mở rộng hợp lý gồm kiểm tra gần-trùng theo mô tả, chia train/test theo thời gian/vị trí, tăng cường biểu diễn địa lý và điều chỉnh khoảng dự báo theo nhóm loại tài sản. \todo{Viết kết luận dựa trên kết quả thực nghiệm thực tế của nhóm.}
+\begin{thebibliography}{9}
+\bibitem{dataset} TiniX AI. \emph{Tinix Vietnam Real Estate Listings 2025--2026}. Hugging Face. \url{https://huggingface.co/datasets/vduydong/vietnam-real-estates-2}. Truy cập 2026.
+\bibitem{han} J. Han, J. Pei, H. Tong. \emph{Data Mining: Concepts and Techniques}, 4th ed., 2022.
+\bibitem{hastie} T. Hastie, R. Tibshirani, J. Friedman. \emph{The Elements of Statistical Learning}, 2nd ed., Springer, 2009.
+\bibitem{sklearn} F. Pedregosa et al. Scikit-learn: Machine Learning in Python. \emph{JMLR}, 12:2825--2830, 2011.
+\bibitem{conformal} A. N. Angelopoulos and S. Bates. A Gentle Introduction to Conformal Prediction and Distribution-Free Uncertainty Quantification. \emph{Foundations and Trends in Machine Learning}, 16(4):494--591, 2023.
+\end{thebibliography}
+\appendix\chapter{Cách tái lập}\begin{verbatim}
+pip install -r requirements.txt
+python scripts/download_data.py
+python scripts/train.py --max-rows 80000
+python scripts/export\_report.py
+streamlit run app/streamlit_app.py
+\end{verbatim}
+\chapter{Checklist hoàn thiện}\begin{enumerate}\item Đối chiếu số liệu thực tế với nguồn.\item Chạy ít nhất ba mô hình và phân tích bảng kết quả.\item Chèn hình minh họa ứng dụng và kết quả.\item Điền thông tin sinh viên, giảng viên.\item Tự viết nhận xét của nhóm và kê khai công cụ AI.\end{enumerate}
+\end{document}

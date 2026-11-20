@@ -1,0 +1,47 @@
+CO3029 — THI NGHIEM 4: RESIDUAL & BIAS AUDIT
+==========================================
+
+1. BACKUP PROJECT (recommended).
+2. Unzip into the project root, preserving paths:
+   scripts/residual_audit.py        [NEW]
+   scripts/export_residual.py       [NEW]
+   HUONG_DAN_RESIDUAL.txt           [NEW]
+
+3. Existing dataset is NOT downloaded and previous models/results are NOT overwritten.
+   Run from BTL/ with activated .venv:
+
+   Test-Path .\data\raw\hcm_listings.parquet
+
+4. Smoke test:
+   python scripts/residual_audit.py --train-n 3000 --test-size 2000 --repeats 1 --out outputs/experiments/residual_smoke
+
+5. Full experiment (same holdouts and seeds as generalization audit):
+   python scripts/residual_audit.py --train-n 80000 --test-size 20000 --repeats 3 --out outputs/experiments/residual_final
+
+6. Export results into report/generated/:
+   python scripts/export_residual.py --input outputs/experiments/residual_final
+
+7. Outputs:
+   outputs/experiments/residual_final/residual_info.json
+   outputs/experiments/residual_final/residual_runs.csv
+   outputs/experiments/residual_final/residual_summary.csv
+   outputs/experiments/residual_final/residual_tail_runs.csv
+   outputs/experiments/residual_final/residual_tail_summary.csv
+   outputs/experiments/residual_final/residual_quantiles.csv
+   outputs/experiments/residual_final/signed_bias_by_band.png
+   outputs/experiments/residual_final/mae_by_band.png
+   outputs/experiments/residual_final/mape_by_band.png
+   outputs/experiments/residual_final/actual_vs_predicted_by_band.png
+
+8. In LaTeX report/main.tex, manually add if needed:
+   \input{generated/residual_price_table.tex}
+   \input{generated/residual_tail_table.tex}
+   \includegraphics[width=.85\linewidth]{generated/signed_bias_by_band.png}
+
+Notes:
+- Predicted minus actual > 0: overvaluation; < 0: undervaluation.
+- Price bands (<3, 3-10, 10-30, >=30 bn VND) use ACTUAL test price ONLY FOR EVALUATION.
+- Temporal holdout differs from random holdout and spans only a few days in your preceding run.
+- Results across repeats share one test set, so SD across repeats is not an independent CI.
+- These scripts reuse generalization_audit.py and learning_curve.py; keep earlier patches installed.
+- If data is elsewhere, add --data "path/to/existing.parquet" (no redownload).
